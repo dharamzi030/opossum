@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>줌쥐 - 주머니쥐와 놀기</title>
+    <meta name="description" content="Three.js로 만든 주머니쥐 인터랙티브 3D 씬">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loader-content">
+            <div class="loader-spinner"></div>
+            <p class="loader-text">주머니쥐가 준비 중...</p>
+        </div>
+    </div>
+
+    <canvas id="three-canvas"></canvas>
+
+    <div id="ui-overlay">
+        <h1 id="title">🐭 줌쥐와 놀기</h1>
+        <div id="instructions">
+            <p>🖱️ 아이템을 클릭해서 주머니쥐에게 던져보세요!</p>
+        </div>
+        <div id="reaction-bubble" class="hidden">
+            <span id="reaction-text"></span>
+        </div>
+        <div id="item-tray">
+            <button class="item-btn" data-item="banana" title="바나나">🍌</button>
+            <button class="item-btn" data-item="avocado" title="아보카도">🥑</button>
+            <button class="item-btn" data-item="broccoli" title="브로콜리">🥦</button>
+            <button class="item-btn" data-item="brush" title="브러시">🪥</button>
+            <button class="item-btn" data-item="sponge" title="스펀지">🧽</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
