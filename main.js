@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+console.log("Three.js main.js starting...");
 
 // ===== Scene Setup =====
 const canvas = document.getElementById('three-canvas');
@@ -17,6 +18,11 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
+
+// ===== Raycaster for Interaction =====
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let isDragging = false;
 
 // ===== Lights =====
 const ambientLight = new THREE.AmbientLight(0xFFF5E6, 0.6);
@@ -62,28 +68,37 @@ const mat = {
     window: new THREE.MeshStandardMaterial({ color: 0xDDEEFF, roughness: 0.1, transparent: true, opacity: 0.3 }),
     windowFrame: new THREE.MeshStandardMaterial({ color: 0xF0EBE5, roughness: 0.5 }),
     rug: new THREE.MeshStandardMaterial({ color: 0x8B3A3A, roughness: 0.95 }),
+    skin: new THREE.MeshStandardMaterial({ color: 0xFFDBAC, roughness: 0.4 }),
+    blood: new THREE.MeshBasicMaterial({ color: 0xCC0000 }),
 };
+
+// ===== Groups for Scene Management =====
+const roomGroup = new THREE.Group();
+const bathroomGroup = new THREE.Group();
+bathroomGroup.visible = false;
+scene.add(roomGroup);
+scene.add(bathroomGroup);
 
 // ===== Room =====
 // Back wall
 const backWall = new THREE.Mesh(new THREE.PlaneGeometry(16, 10), mat.wall);
 backWall.position.set(0, 3, -3);
 backWall.receiveShadow = true;
-scene.add(backWall);
+roomGroup.add(backWall);
 
 // Floor
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 14), mat.floor);
 floor.rotation.x = -Math.PI / 2;
 floor.position.y = -0.5;
 floor.receiveShadow = true;
-scene.add(floor);
+roomGroup.add(floor);
 
 // Rug
 const rug = new THREE.Mesh(new THREE.PlaneGeometry(5, 3), mat.rug);
 rug.rotation.x = -Math.PI / 2;
 rug.position.set(0, -0.48, 3);
 rug.receiveShadow = true;
-scene.add(rug);
+roomGroup.add(rug);
 
 // ===== Window =====
 function createWindow() {
@@ -115,14 +130,14 @@ function createWindow() {
     group.position.set(0, 4.2, -2.95);
     return group;
 }
-scene.add(createWindow());
+roomGroup.add(createWindow());
 
 // ===== Table =====
 const tableTop = new THREE.Mesh(new THREE.BoxGeometry(7, 0.15, 2.5), mat.wood);
 tableTop.position.set(0, 0.8, 0);
 tableTop.castShadow = true;
 tableTop.receiveShadow = true;
-scene.add(tableTop);
+roomGroup.add(tableTop);
 
 // ===== Cushion =====
 function createCushion() {
@@ -138,16 +153,18 @@ function createCushion() {
     group.position.set(-0.3, 1.05, 0);
     return group;
 }
-scene.add(createCushion());
+roomGroup.add(createCushion());
 
 // ===== Opossum =====
 let opossum;
+let fatness = 1.0;
 const opossumReactions = {
     banana: ['냠냠! 바나나 좋아! 🍌', '달콤해~! 😋'],
     avocado: ['아보카도다! 건강해지는 기분! 🥑', '부드럽고 맛있어! 💚'],
     broccoli: ['브로콜리... 음... 🥦', '야채도 먹어야지! 💪'],
     brush: ['빗질해주는 거야? 기분 좋아~ 🪥', '아 시원해~ ✨'],
     sponge: ['스펀지?! 이건 못 먹어! 🧽', '장난치는 거지?! 😤'],
+    shower: ['우와 시원해~! 🚿', '물놀이 좋아! ✨', '뽀득뽀득 씻자! 🧼'],
 };
 
 function createOpossum() {
@@ -165,35 +182,39 @@ function createOpossum() {
     belly.scale.set(1.0, 0.7, 0.8);
     group.add(belly);
 
-    // Head
+    // Save references for scaling
+    group.body = body;
+    group.belly = belly;
+    group.headGroup = new THREE.Group();
+    group.add(group.headGroup);
+    
+    // Head parts
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 10), mat.fur);
     head.position.set(0.65, 0.2, 0);
     head.scale.set(1.1, 0.9, 0.9);
     head.castShadow = true;
-    group.add(head);
+    group.headGroup.add(head);
 
-    // Snout
     const snout = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.3, 8), mat.furLight);
     snout.rotation.z = -Math.PI / 2;
     snout.position.set(0.97, 0.12, 0);
-    group.add(snout);
+    group.headGroup.add(snout);
 
-    // Nose
     const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), mat.nose);
     nose.position.set(1.12, 0.12, 0);
-    group.add(nose);
-
+    group.headGroup.add(nose);
+    
     // Eyes
     [-1, 1].forEach(side => {
         const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), mat.eye);
         eye.position.set(0.82, 0.3, side * 0.18);
-        group.add(eye);
+        group.headGroup.add(eye);
         const eyeHighlight = new THREE.Mesh(
             new THREE.SphereGeometry(0.02, 6, 4),
             new THREE.MeshBasicMaterial({ color: 0xFFFFFF })
         );
         eyeHighlight.position.set(0.84, 0.32, side * 0.17);
-        group.add(eyeHighlight);
+        group.headGroup.add(eyeHighlight);
     });
 
     // Ears
@@ -201,18 +222,21 @@ function createOpossum() {
         const ear = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), mat.ear);
         ear.position.set(0.55, 0.48, side * 0.22);
         ear.scale.set(0.6, 1, 0.8);
-        group.add(ear);
+        group.headGroup.add(ear);
     });
 
     // Legs
+    group.legs = [];
     [[-0.3, -0.35, 0.25], [-0.3, -0.35, -0.25], [0.3, -0.35, 0.25], [0.3, -0.35, -0.25]].forEach(pos => {
+        const legGroup = new THREE.Group();
         const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.25, 8), mat.fur);
-        leg.position.set(...pos);
-        leg.castShadow = true;
-        group.add(leg);
+        legGroup.add(leg);
         const paw = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), mat.nose);
-        paw.position.set(pos[0], pos[1] - 0.12, pos[2]);
-        group.add(paw);
+        paw.position.set(0, -0.12, 0);
+        legGroup.add(paw);
+        legGroup.position.set(...pos);
+        group.add(legGroup);
+        group.legs.push({ mesh: legGroup, basePos: new THREE.Vector3(...pos) });
     });
 
     // Tail
@@ -226,13 +250,25 @@ function createOpossum() {
     const tail = new THREE.Mesh(tailGeo, mat.tail);
     tail.castShadow = true;
     group.add(tail);
+    group.tail = tail;
 
     group.position.set(-0.3, 1.45, 0);
     group.rotation.y = -0.3;
+    
+    // Tag body parts for raycasting
+    body.userData.type = 'body';
+    head.userData.type = 'head';
+    
     return group;
 }
 opossum = createOpossum();
 scene.add(opossum);
+
+// ===== Human Hand (Icon) =====
+const handIcon = document.createElement('div');
+handIcon.id = 'hand-icon';
+handIcon.innerHTML = '🖐️';
+document.body.appendChild(handIcon);
 
 // ===== Plants =====
 function createPlant(potMat, x, y, z, scale = 1) {
@@ -269,13 +305,13 @@ function createPlant(potMat, x, y, z, scale = 1) {
 }
 
 // Windowsill plants
-scene.add(createPlant(mat.pot, -1.2, 2.72, -2.7, 0.8));
-scene.add(createPlant(mat.potWhite, 0, 2.72, -2.7, 0.7));
-scene.add(createPlant(mat.pot, 1.0, 2.72, -2.7, 0.9));
+roomGroup.add(createPlant(mat.pot, -1.2, 2.72, -2.7, 0.8));
+roomGroup.add(createPlant(mat.potWhite, 0, 2.72, -2.7, 0.7));
+roomGroup.add(createPlant(mat.pot, 1.0, 2.72, -2.7, 0.9));
 
 // Table plants
-scene.add(createPlant(mat.potWhite, 2.8, 0.95, -0.3, 1.1));
-scene.add(createPlant(mat.pot, -2.8, 0.95, 0.2, 1.0));
+roomGroup.add(createPlant(mat.potWhite, 2.8, 0.95, -0.3, 1.1));
+roomGroup.add(createPlant(mat.pot, -2.8, 0.95, 0.2, 1.0));
 
 // Floor plant (big)
 function createBigPlant(x, z) {
@@ -297,8 +333,8 @@ function createBigPlant(x, z) {
     group.position.set(x, -0.5, z);
     return group;
 }
-scene.add(createBigPlant(3.5, 0));
-scene.add(createBigPlant(-3.5, -1));
+roomGroup.add(createBigPlant(3.5, 0));
+roomGroup.add(createBigPlant(-3.5, -1));
 
 // ===== Throwable Items =====
 const thrownItems = [];
@@ -349,6 +385,17 @@ function createItemMesh(type) {
         }
         case 'sponge': {
             mesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.15), mat.sponge);
+            break;
+        }
+        case 'shower': {
+            const g = new THREE.Group();
+            const head = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 12), mat.windowFrame);
+            head.rotation.x = Math.PI / 2;
+            g.add(head);
+            const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 8), mat.windowFrame);
+            handle.position.y = -0.15;
+            g.add(handle);
+            mesh = g;
             break;
         }
         default:
@@ -414,17 +461,149 @@ function showReaction(type) {
     }, 2500);
 }
 
+// ===== Bathroom Scene Elements =====
+const bathMat = {
+    tile: new THREE.MeshStandardMaterial({ color: 0xCACACA, roughness: 0.2 }),
+    tub: new THREE.MeshStandardMaterial({ color: 0xE8DDD3, roughness: 0.5 }),
+    water: new THREE.MeshStandardMaterial({ color: 0x99CCFF, transparent: true, opacity: 0.6 }),
+    bubble: new THREE.MeshStandardMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.8 }),
+};
+
+function createBathroom() {
+    // Wall
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(16, 10), bathMat.tile);
+    wall.position.set(0, 3, -3);
+    bathroomGroup.add(wall);
+
+    // Floor
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 14), bathMat.tile);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.5;
+    bathroomGroup.add(floor);
+
+    // Bathtub
+    const tubGroup = new THREE.Group();
+    const tubBase = new THREE.Mesh(new THREE.CylinderGeometry(2, 1.8, 1, 32), bathMat.tub);
+    tubBase.scale.set(1.5, 1, 1);
+    tubGroup.add(tubBase);
+    
+    const water = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 0.1, 32), bathMat.water);
+    water.position.y = 0.3;
+    water.scale.set(1.5, 1, 1);
+    tubGroup.add(water);
+
+    tubGroup.position.set(0, 0, 0);
+    bathroomGroup.add(tubGroup);
+
+    // Palm plant in bathroom
+    const palmGroup = createPlant(mat.pot, 2.5, 0, -1.5, 2.5);
+    bathroomGroup.add(palmGroup);
+}
+createBathroom();
+
+// ===== Scene Switching =====
+let currentScene = 'room';
+
+function switchToBathroom() {
+    currentScene = 'bathroom';
+    roomGroup.visible = false;
+    bathroomGroup.visible = true;
+    opossum.position.set(0, 0.8, 0); // In the tub
+    scene.background = new THREE.Color(0xDDDDDD);
+    scene.fog.color.set(0xDDDDDD);
+    
+    document.getElementById('room-items').classList.add('hidden');
+    document.getElementById('sponge-main').classList.add('hidden'); // Hide main sponge
+    document.getElementById('bathroom-items').classList.remove('hidden');
+    
+    showReaction('sponge_bath');
+}
+
+function switchToRoom() {
+    currentScene = 'room';
+    roomGroup.visible = true;
+    bathroomGroup.visible = false;
+    opossum.position.set(-0.3, 1.45, 0); // Back on cushion
+    scene.background = new THREE.Color(0xE8DDD3);
+    scene.fog.color.set(0xE8DDD3);
+    
+    document.getElementById('room-items').classList.remove('hidden');
+    document.getElementById('sponge-main').classList.remove('hidden');
+    document.getElementById('bathroom-items').classList.add('hidden');
+}
+
 // ===== Item Tray Event =====
 document.querySelectorAll('.item-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         const type = btn.dataset.item;
-        throwItem(type);
+        
+        if (type === 'return') {
+            switchToRoom();
+            return;
+        }
+
+        if (currentScene === 'room') {
+            if (type === 'sponge') {
+                switchToBathroom();
+            } else {
+                throwItem(type);
+            }
+        } else {
+            // Bathroom scene
+            if (type === 'shower') {
+                isPouringWater = true;
+                setTimeout(() => { isPouringWater = false; }, 2000);
+                showReaction('shower');
+            } else {
+                throwItem(type);
+            }
+        }
     });
 });
 
+// ===== Bubbles & Water =====
+const bubbles = [];
+const waterParticles = [];
+let isPouringWater = false;
+
+function createWaterParticle() {
+    const geo = new THREE.SphereGeometry(0.04, 6, 4);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x44AAFF, transparent: true, opacity: 0.6 });
+    const p = new THREE.Mesh(geo, mat);
+    
+    // Pour from top-ish
+    p.position.set(
+        opossum.position.x + (Math.random() - 0.5) * 0.5,
+        opossum.position.y + 2.5,
+        opossum.position.z + (Math.random() - 0.5) * 0.5
+    );
+    scene.add(p);
+    waterParticles.push({
+        mesh: p,
+        velocity: new THREE.Vector3((Math.random() - 0.5) * 0.05, -0.15, (Math.random() - 0.5) * 0.05),
+        life: 1.0
+    });
+}
+function createBubble() {
+    const bubbleGeo = new THREE.SphereGeometry(0.05 + Math.random() * 0.1, 8, 8);
+    const bubble = new THREE.Mesh(bubbleGeo, bathMat.bubble);
+    bubble.position.set(
+        opossum.position.x + (Math.random() - 0.5) * 1,
+        opossum.position.y + 0.2,
+        opossum.position.z + (Math.random() - 0.5) * 1
+    );
+    scene.add(bubble);
+    bubbles.push({
+        mesh: bubble,
+        velocity: new THREE.Vector3((Math.random() - 0.5) * 0.02, 0.02 + Math.random() * 0.05, (Math.random() - 0.5) * 0.02),
+        life: 1.0
+    });
+}
+
+opossumReactions['sponge_bath'] = ['시원해~! 🧼', '보글보글 거품 좋아! ✨', '욕실로 왔네?! 🛁'];
+
 // ===== Animation =====
 let time = 0;
-const opossumBaseY = opossum.position.y;
 let opossumJumping = false;
 let opossumJumpTime = 0;
 
@@ -434,13 +613,27 @@ function animate() {
     time += delta;
 
     // Opossum idle breathing
+    const dynamicBaseY = (currentScene === 'bathroom' ? 0.8 : 1.45) + (fatness - 1) * 0.4;
+    
+    // Body only scaling
+    const bScale = fatness;
+    if (opossum.body) {
+        opossum.body.scale.set(1.3 * bScale, 0.9 * bScale, 1.0 * bScale);
+        opossum.belly.scale.set(1.0 * bScale, 0.7 * bScale, 0.8 * bScale);
+        opossum.headGroup.position.x = 0.65 * (bScale - 1) * 0.8;
+        opossum.headGroup.position.y = 0.2 * (bScale - 1) * 0.5;
+        opossum.legs.forEach(leg => {
+            leg.mesh.position.set(leg.basePos.x * bScale, leg.basePos.y * bScale, leg.basePos.z * bScale);
+        });
+        opossum.tail.position.x = -0.6 * (bScale - 1);
+    }
+    
     if (!opossumJumping) {
-        opossum.position.y = opossumBaseY + Math.sin(time * 2) * 0.02;
+        opossum.position.y = dynamicBaseY + Math.sin(time * 2) * 0.02;
         opossum.rotation.y = -0.3 + Math.sin(time * 0.8) * 0.1;
     } else {
-        opossumJumpTime += delta;
         const jt = opossumJumpTime;
-        opossum.position.y = opossumBaseY + Math.sin(jt * 8) * 0.15 * Math.max(0, 1 - jt);
+        opossum.position.y = dynamicBaseY + Math.sin(jt * 8) * 0.15 * Math.max(0, 1 - jt);
         opossum.rotation.z = Math.sin(jt * 10) * 0.1 * Math.max(0, 1 - jt);
         if (opossumJumpTime > 1.2) {
             opossumJumping = false;
@@ -485,6 +678,60 @@ function animate() {
             opossumJumping = true;
             opossumJumpTime = 0;
             showReaction(item.type);
+            
+            if (item.type === 'banana') {
+                fatness += 0.15;
+            }
+            
+            if (currentScene === 'bathroom') {
+                for (let j = 0; j < 10; j++) createBubble();
+            }
+        }
+    }
+
+    // Update Bubbles
+    for (let i = bubbles.length - 1; i >= 0; i--) {
+        const b = bubbles[i];
+        b.mesh.position.add(b.velocity);
+        b.life -= delta * 0.5;
+        b.mesh.scale.setScalar(Math.max(0, b.life));
+        if (b.life <= 0) {
+            scene.remove(b.mesh);
+            bubbles.splice(i, 1);
+        }
+    }
+
+    // Update Water Particles
+    if (isPouringWater && currentScene === 'bathroom') {
+        for (let i = 0; i < 3; i++) createWaterParticle();
+    }
+
+    for (let i = waterParticles.length - 1; i >= 0; i--) {
+        const p = waterParticles[i];
+        p.velocity.y -= 0.01; // gravity
+        p.mesh.position.add(p.velocity);
+        p.life -= delta * 0.8;
+        if (p.mesh.position.y < 0.8 && currentScene === 'bathroom') {
+            // Hit water/opossum area
+            if (Math.random() > 0.8) createBubble();
+            scene.remove(p.mesh);
+            waterParticles.splice(i, 1);
+        } else if (p.life <= 0) {
+            scene.remove(p.mesh);
+            waterParticles.splice(i, 1);
+        }
+    }
+
+    // Update Blood
+    for (let i = bloodParticles.length - 1; i >= 0; i--) {
+        const b = bloodParticles[i];
+        b.velocity.y -= 0.01;
+        b.mesh.position.add(b.velocity);
+        b.life -= delta * 1.5;
+        b.mesh.scale.setScalar(Math.max(0, b.life));
+        if (b.life <= 0) {
+            scene.remove(b.mesh);
+            bloodParticles.splice(i, 1);
         }
     }
 
@@ -507,4 +754,71 @@ setTimeout(() => {
     document.getElementById('loading-screen').classList.add('hidden');
 }, 800);
 
+// ===== Mouse Interaction for Washing & Petting =====
+const bloodParticles = [];
+function createBlood(pos) {
+    for (let i = 0; i < 15; i++) {
+        const g = new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 6, 4);
+        const m = new THREE.Mesh(g, mat.blood);
+        m.position.copy(pos);
+        scene.add(m);
+        bloodParticles.push({
+            mesh: m,
+            velocity: new THREE.Vector3((Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2),
+            life: 1.0
+        });
+    }
+}
+
+window.addEventListener('mousedown', (event) => { 
+    isDragging = true; 
+    handIcon.style.transform = 'translate(-50%, -50%) scale(0.8)';
+    
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(opossum, true);
+    
+    if (intersects.length > 0) {
+        const obj = intersects[0].object;
+        if (obj.userData.type === 'head') {
+            // Bite!
+            showReaction('bite');
+            createBlood(new THREE.Vector3().setFromMatrixPosition(obj.matrixWorld));
+        } else {
+            showReaction('pet');
+        }
+    }
+});
+
+window.addEventListener('mouseup', () => { 
+    isDragging = false; 
+    handIcon.style.transform = 'translate(-50%, -50%) scale(1)';
+});
+
+window.addEventListener('mousemove', (event) => {
+    handIcon.style.left = event.clientX + 'px';
+    handIcon.style.top = event.clientY + 'px';
+    handIcon.style.display = 'block';
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    if (isDragging) {
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObject(opossum, true);
+        if (intersects.length > 0) {
+            if (currentScene === 'bathroom') {
+                createBubble();
+            } else {
+                if (Math.random() > 0.98) showReaction('pet');
+            }
+        }
+    }
+});
+
+opossumReactions['bite'] = ['가까이 오지 마! 🦷', '앙! 물어버린다! 😤', '머리는 만지지 마! 💢'];
+opossumReactions['pet'] = ['기분 좋아~ 흐흐 🐾', '더 해줘! ✨', '쓰담쓰담 조아... 🥰'];
+
 animate();
+console.log("Three.js main.js finished and animation loop started.");

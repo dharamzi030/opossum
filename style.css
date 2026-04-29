@@ -27,6 +27,7 @@ html, body {
     font-family: var(--font-main);
     background: var(--bg-dark);
     color: var(--text-light);
+    cursor: none;
 }
 
 /* ===== Loading Screen ===== */
@@ -89,7 +90,7 @@ html, body {
 #ui-overlay {
     position: fixed;
     inset: 0;
-    pointer-events: none;
+    pointer-events: none; /* Let clicks pass through to 3D scene */
     z-index: 10;
 }
 
@@ -251,15 +252,41 @@ html, body {
     transition-duration: 0.1s;
 }
 
-.item-btn.throwing {
-    animation: throwPulse 0.6s ease;
-    border-color: var(--accent-light);
+.item-tray {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.item-group {
+    display: flex;
+    gap: 16px;
+}
+
+.item-group.hidden {
+    display: none !important;
+}
+
+.hidden {
+    display: none !important;
 }
 
 @keyframes throwPulse {
     0% { box-shadow: 0 0 0 0 rgba(125, 184, 146, 0.5); }
     70% { box-shadow: 0 0 0 16px rgba(125, 184, 146, 0); }
     100% { box-shadow: 0 0 0 0 rgba(125, 184, 146, 0); }
+}
+
+/* ===== Hand Icon ===== */
+#hand-icon {
+    position: fixed;
+    pointer-events: none;
+    z-index: 10000;
+    font-size: 3rem;
+    transform: translate(-50%, -50%);
+    display: none;
+    user-select: none;
+    transition: transform 0.1s ease;
 }
 
 /* ===== Responsive ===== */

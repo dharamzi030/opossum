@@ -28,22 +28,39 @@
             <span id="reaction-text"></span>
         </div>
         <div id="item-tray">
-            <button class="item-btn" data-item="banana" title="바나나">🍌</button>
-            <button class="item-btn" data-item="avocado" title="아보카도">🥑</button>
-            <button class="item-btn" data-item="broccoli" title="브로콜리">🥦</button>
-            <button class="item-btn" data-item="brush" title="브러시">🪥</button>
-            <button class="item-btn" data-item="sponge" title="스펀지">🧽</button>
+            <div id="room-items" class="item-group">
+                <button class="item-btn" data-item="banana" title="바나나">🍌</button>
+                <button class="item-btn" data-item="avocado" title="아보카도">🥑</button>
+                <button class="item-btn" data-item="broccoli" title="브로콜리">🥦</button>
+                <button class="item-btn" data-item="brush" title="브러시">🪥</button>
+            </div>
+            <div id="bathroom-items" class="item-group hidden">
+                <button class="item-btn" data-item="sponge" title="스폰지">🧽</button>
+                <button class="item-btn" data-item="shower" title="샤워기">🚿</button>
+                <button id="return-btn" class="item-btn" data-item="return" title="방으로 돌아가기">🏠</button>
+            </div>
+            <button id="sponge-main" class="item-btn" data-item="sponge" title="욕실로 가기">🧽</button>
         </div>
     </div>
 
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
         }
     }
     </script>
-    <script type="module" src="main.js"></script>
+    <script type="module" src="main.js?v=2"></script>
+    <script>
+        // Fallback to hide loading screen if main script fails to load or run
+        setTimeout(() => {
+            const loader = document.getElementById('loading-screen');
+            if (loader && !loader.classList.contains('hidden')) {
+                console.log("Hiding loader via fallback");
+                loader.classList.add('hidden');
+            }
+        }, 5000);
+    </script>
 </body>
 </html>
