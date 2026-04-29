@@ -659,8 +659,7 @@ function startExercise() {
         wheelModel.visible = false;
         if (cushion) cushion.visible = true;
         opossum.position.copy(oldPos);
-        // Reduce fatness exactly by one banana's worth (0.15)
-        fatness = Math.max(1.0, fatness - 0.15);
+        // Fatness is now reduced gradually in animate()
     }, 4000);
 }
 
@@ -693,6 +692,9 @@ function animate() {
     }
 
     if (isExercising) {
+        // Burn calories! (Lose 0.15 fatness over 4 seconds)
+        fatness = Math.max(1.0, fatness - (0.15 / 4) * delta);
+        
         wheelModel.rotatingPart.rotation.z += delta * 12;
         opossum.position.y = dynamicBaseY + Math.sin(time * 25) * 0.08;
         opossum.rotation.z = Math.sin(time * 20) * 0.15;
