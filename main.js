@@ -702,6 +702,7 @@ function animate() {
         opossum.position.y = dynamicBaseY + Math.sin(time * 2) * 0.02;
         opossum.rotation.y = -0.3 + Math.sin(time * 0.8) * 0.1;
     } else {
+        opossumJumpTime += delta;
         const jt = opossumJumpTime;
         opossum.position.y = dynamicBaseY + Math.sin(jt * 8) * 0.15 * Math.max(0, 1 - jt);
         opossum.rotation.z = Math.sin(jt * 10) * 0.1 * Math.max(0, 1 - jt);
