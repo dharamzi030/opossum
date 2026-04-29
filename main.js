@@ -659,8 +659,8 @@ function startExercise() {
         wheelModel.visible = false;
         if (cushion) cushion.visible = true;
         opossum.position.copy(oldPos);
-        // Reduce fatness
-        fatness = Math.max(1.0, fatness - 0.25);
+        // Reduce fatness exactly by one banana's worth (0.15)
+        fatness = Math.max(1.0, fatness - 0.15);
     }, 4000);
 }
 
