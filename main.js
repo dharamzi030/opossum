@@ -70,6 +70,8 @@ const mat = {
     rug: new THREE.MeshStandardMaterial({ color: 0x8B3A3A, roughness: 0.95 }),
     skin: new THREE.MeshStandardMaterial({ color: 0xFFDBAC, roughness: 0.4 }),
     blood: new THREE.MeshBasicMaterial({ color: 0xCC0000 }),
+    poop: new THREE.MeshStandardMaterial({ color: 0x5C3317, roughness: 1.0 }),
+    poopDark: new THREE.MeshStandardMaterial({ color: 0x3D2010, roughness: 1.0 }),
 };
 
 // ===== Groups for Scene Management =====
@@ -92,6 +94,7 @@ floor.rotation.x = -Math.PI / 2;
 floor.position.y = -0.5;
 floor.receiveShadow = true;
 roomGroup.add(floor);
+const roomFloor = floor; // 💩 바닥 클릭 감지용
 
 // Rug
 const rug = new THREE.Mesh(new THREE.PlaneGeometry(5, 3), mat.rug);
@@ -104,7 +107,6 @@ roomGroup.add(rug);
 function createWindow() {
     const group = new THREE.Group();
     const frameThick = 0.08;
-    // Outer frame
     const frameMat = mat.windowFrame;
     const createBar = (w, h, d) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frameMat);
 
@@ -116,12 +118,10 @@ function createWindow() {
 
     [top, bot, left, right, mid].forEach(b => group.add(b));
 
-    // Glass
     const glass = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 2.9), mat.window);
     glass.position.z = -0.02;
     group.add(glass);
 
-    // Window sill
     const sill = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.1, 0.4), frameMat);
     sill.position.set(0, -1.55, 0.15);
     sill.castShadow = true;
@@ -172,25 +172,21 @@ const opossumReactions = {
 function createOpossum() {
     const group = new THREE.Group();
 
-    // Body
     const body = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), mat.fur);
     body.scale.set(1.3, 0.9, 1.0);
     body.castShadow = true;
     group.add(body);
 
-    // Belly
     const belly = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 10), mat.furLight);
     belly.position.set(0, -0.1, 0.2);
     belly.scale.set(1.0, 0.7, 0.8);
     group.add(belly);
 
-    // Save references for scaling
     group.body = body;
     group.belly = belly;
     group.headGroup = new THREE.Group();
     group.add(group.headGroup);
 
-    // Head parts
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 10), mat.fur);
     head.position.set(0.65, 0.2, 0);
     head.scale.set(1.1, 0.9, 0.9);
@@ -206,7 +202,6 @@ function createOpossum() {
     nose.position.set(1.12, 0.12, 0);
     group.headGroup.add(nose);
 
-    // Eyes
     [-1, 1].forEach(side => {
         const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), mat.eye);
         eye.position.set(0.82, 0.3, side * 0.18);
@@ -219,7 +214,6 @@ function createOpossum() {
         group.headGroup.add(eyeHighlight);
     });
 
-    // Ears
     [-1, 1].forEach(side => {
         const ear = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), mat.ear);
         ear.position.set(0.55, 0.48, side * 0.22);
@@ -227,7 +221,6 @@ function createOpossum() {
         group.headGroup.add(ear);
     });
 
-    // Legs
     group.legs = [];
     [[-0.3, -0.35, 0.25], [-0.3, -0.35, -0.25], [0.3, -0.35, 0.25], [0.3, -0.35, -0.25]].forEach(pos => {
         const legGroup = new THREE.Group();
@@ -241,7 +234,6 @@ function createOpossum() {
         group.legs.push({ mesh: legGroup, basePos: new THREE.Vector3(...pos) });
     });
 
-    // Tail
     const tailCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(-0.6, 0, 0),
         new THREE.Vector3(-0.9, -0.1, 0.1),
@@ -257,7 +249,6 @@ function createOpossum() {
     group.position.set(-0.3, 1.45, 0);
     group.rotation.y = -0.3;
 
-    // Tag body parts for raycasting
     body.userData.type = 'body';
     head.userData.type = 'head';
 
@@ -275,18 +266,15 @@ document.body.appendChild(handIcon);
 // ===== Plants =====
 function createPlant(potMat, x, y, z, scale = 1) {
     const group = new THREE.Group();
-    // Pot
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.35, 12), potMat);
     pot.castShadow = true;
     group.add(pot);
-    // Dirt
     const dirt = new THREE.Mesh(
         new THREE.CylinderGeometry(0.19, 0.19, 0.04, 12),
         new THREE.MeshStandardMaterial({ color: 0x4A3520, roughness: 1 })
     );
     dirt.position.y = 0.16;
     group.add(dirt);
-    // Leaves
     for (let i = 0; i < 5; i++) {
         const leafGeo = new THREE.SphereGeometry(0.15, 8, 6);
         const leafMesh = new THREE.Mesh(leafGeo, i % 2 === 0 ? mat.leaf : mat.leafDark);
@@ -296,26 +284,20 @@ function createPlant(potMat, x, y, z, scale = 1) {
         leafMesh.castShadow = true;
         group.add(leafMesh);
     }
-    // Stem
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 6), mat.leafDark);
     stem.position.y = 0.25;
     group.add(stem);
-
     group.position.set(x, y, z);
     group.scale.setScalar(scale);
     return group;
 }
 
-// Windowsill plants
 roomGroup.add(createPlant(mat.pot, -1.2, 2.72, -2.7, 0.8));
 roomGroup.add(createPlant(mat.potWhite, 0, 2.72, -2.7, 0.7));
 roomGroup.add(createPlant(mat.pot, 1.0, 2.72, -2.7, 0.9));
-
-// Table plants
 roomGroup.add(createPlant(mat.potWhite, 2.8, 0.95, -0.3, 1.1));
 roomGroup.add(createPlant(mat.pot, -2.8, 0.95, 0.2, 1.0));
 
-// Floor plant (big)
 function createBigPlant(x, z) {
     const group = new THREE.Group();
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 0.7, 12), mat.potWhite);
@@ -408,12 +390,7 @@ function createItemMesh(type) {
 
 function throwItem(type) {
     const mesh = createItemMesh(type);
-    // Start from bottom of screen
-    mesh.position.set(
-        (Math.random() - 0.5) * 2,
-        0.5,
-        5
-    );
+    mesh.position.set((Math.random() - 0.5) * 2, 0.5, 5);
     scene.add(mesh);
 
     const target = new THREE.Vector3(
@@ -423,8 +400,7 @@ function throwItem(type) {
     );
 
     thrownItems.push({
-        mesh,
-        type,
+        mesh, type,
         startPos: mesh.position.clone(),
         targetPos: target,
         progress: 0,
@@ -434,12 +410,9 @@ function throwItem(type) {
             (Math.random() - 0.5) * 8,
             (Math.random() - 0.5) * 8
         ),
-        done: false,
-        fadeOut: false,
-        fadeTimer: 0,
+        done: false, fadeOut: false, fadeTimer: 0,
     });
 
-    // Button animation
     const btn = document.querySelector(`.item-btn[data-item="${type}"]`);
     if (btn) {
         btn.classList.add('throwing');
@@ -455,13 +428,74 @@ function showReaction(type) {
     textEl.textContent = text;
     bubble.classList.remove('hidden');
     bubble.classList.add('visible');
-
     clearTimeout(bubble._timeout);
     bubble._timeout = setTimeout(() => {
         bubble.classList.remove('visible');
         bubble.classList.add('hidden');
     }, 2500);
 }
+
+// ===== 💩 Poop System =====
+const poopProjectiles = [];
+const poopPiles = [];
+
+function createPoopMesh() {
+    const g = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), mat.poop);
+    base.scale.set(1.3, 0.55, 1.1);
+    g.add(base);
+    const mid = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), mat.poop);
+    mid.position.set(0.01, 0.08, 0);
+    mid.scale.set(1.0, 0.75, 0.95);
+    g.add(mid);
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), mat.poopDark);
+    top.position.set(0, 0.16, 0);
+    top.scale.set(0.7, 0.9, 0.7);
+    g.add(top);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.028, 6, 4), mat.poopDark);
+    tip.position.set(0, 0.225, 0);
+    g.add(tip);
+    return g;
+}
+
+function launchPoop() {
+    const mesh = createPoopMesh();
+    // 엉덩이 위치 (꼬리 끝, 주머니쥐 뒤쪽)
+    const buttPos = new THREE.Vector3(
+        opossum.position.x - 0.75,
+        opossum.position.y - 0.05,
+        opossum.position.z
+    );
+    mesh.position.copy(buttPos);
+    scene.add(mesh);
+
+    // 왼쪽 바닥에 착지
+    const landX = opossum.position.x - 1.0 - Math.random() * 3.5;
+    const landZ = opossum.position.z + (Math.random() - 0.3) * 4;
+    const targetPos = new THREE.Vector3(
+        Math.max(-6, Math.min(-0.2, landX)),
+        -0.47,
+        Math.max(-2, Math.min(6, landZ))
+    );
+
+    poopProjectiles.push({
+        mesh,
+        startPos: buttPos.clone(),
+        targetPos,
+        progress: 0,
+        speed: 2.2 + Math.random() * 0.8,
+        spinSpeed: (Math.random() - 0.5) * 14,
+        done: false,
+    });
+}
+
+function clearAllPoop() {
+    poopPiles.forEach(p => scene.remove(p));
+    poopPiles.length = 0;
+    showReaction('clean');
+}
+
+opossumReactions['clean'] = ['반짝반짝 깨끗해! ✨', '청소 고마워~! 🧹', '냄새 사라졌다! 😊'];
 
 // ===== Bathroom Scene Elements =====
 const bathMat = {
@@ -472,18 +506,15 @@ const bathMat = {
 };
 
 function createBathroom() {
-    // Wall
     const wall = new THREE.Mesh(new THREE.PlaneGeometry(16, 10), bathMat.tile);
     wall.position.set(0, 3, -3);
     bathroomGroup.add(wall);
 
-    // Floor
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 14), bathMat.tile);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.5;
     bathroomGroup.add(floor);
 
-    // Bathtub
     const tubGroup = new THREE.Group();
     const tubBase = new THREE.Mesh(new THREE.CylinderGeometry(2, 1.8, 1, 32), bathMat.tub);
     tubBase.scale.set(1.5, 1, 1);
@@ -497,7 +528,6 @@ function createBathroom() {
     tubGroup.position.set(0, 0, 0);
     bathroomGroup.add(tubGroup);
 
-    // Palm plant in bathroom
     const palmGroup = createPlant(mat.pot, 2.5, 0, -1.5, 2.5);
     bathroomGroup.add(palmGroup);
 }
@@ -510,12 +540,12 @@ function switchToBathroom() {
     currentScene = 'bathroom';
     roomGroup.visible = false;
     bathroomGroup.visible = true;
-    opossum.position.set(0, 0.8, 0); // In the tub
+    opossum.position.set(0, 0.8, 0);
     scene.background = new THREE.Color(0xDDDDDD);
     scene.fog.color.set(0xDDDDDD);
 
     document.getElementById('room-items').classList.add('hidden');
-    document.getElementById('sponge-main').classList.add('hidden'); // Hide main sponge
+    document.getElementById('sponge-main').classList.add('hidden');
     document.getElementById('bathroom-items').classList.remove('hidden');
 
     showReaction('sponge_bath');
@@ -525,7 +555,7 @@ function switchToRoom() {
     currentScene = 'room';
     roomGroup.visible = true;
     bathroomGroup.visible = false;
-    opossum.position.set(-0.3, 1.45, 0); // Back on cushion
+    opossum.position.set(-0.3, 1.45, 0);
     scene.background = new THREE.Color(0xE8DDD3);
     scene.fog.color.set(0xE8DDD3);
 
@@ -553,7 +583,6 @@ document.querySelectorAll('.item-btn').forEach(btn => {
                 throwItem(type);
             }
         } else {
-            // Bathroom scene
             if (type === 'shower') {
                 isPouringWater = true;
                 setTimeout(() => { isPouringWater = false; }, 2000);
@@ -574,8 +603,6 @@ function createWaterParticle() {
     const geo = new THREE.SphereGeometry(0.04, 6, 4);
     const mat = new THREE.MeshStandardMaterial({ color: 0x44AAFF, transparent: true, opacity: 0.6 });
     const p = new THREE.Mesh(geo, mat);
-
-    // Pour from top-ish
     p.position.set(
         opossum.position.x + (Math.random() - 0.5) * 0.5,
         opossum.position.y + 2.5,
@@ -588,6 +615,7 @@ function createWaterParticle() {
         life: 1.0
     });
 }
+
 function createBubble() {
     const bubbleGeo = new THREE.SphereGeometry(0.05 + Math.random() * 0.1, 8, 8);
     const bubble = new THREE.Mesh(bubbleGeo, bathMat.bubble);
@@ -603,39 +631,37 @@ function createBubble() {
         life: 1.0
     });
 }
+
 // ===== Exercise Wheel =====
 let isExercising = false;
 let wheelModel;
 function createWheel() {
     const group = new THREE.Group();
-    
-    // Static base
+
     const base = new THREE.Group();
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.1, 1.2), new THREE.MeshStandardMaterial({ color: 0x333333 }));
-    floor.position.y = -1.5;
-    base.add(floor);
-    
+    const wfloor = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.1, 1.2), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+    wfloor.position.y = -1.5;
+    base.add(wfloor);
+
     const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 1.5, 8), new THREE.MeshStandardMaterial({ color: 0x444444 }));
     stand.position.set(0, -0.75, 0.4);
     base.add(stand);
     group.add(base);
 
-    // Rotating part
     const rotating = new THREE.Group();
     const ringGeo = new THREE.TorusGeometry(1.5, 0.1, 16, 50);
     const ring = new THREE.Mesh(ringGeo, new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.2 }));
     rotating.add(ring);
-    
-    // Spokes
+
     for (let i = 0; i < 4; i++) {
         const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 3, 8), new THREE.MeshStandardMaterial({ color: 0x666666 }));
         spoke.rotation.z = (i / 4) * Math.PI;
         rotating.add(spoke);
     }
-    
+
     group.add(rotating);
-    group.rotatingPart = rotating; // Reference for animation
-    
+    group.rotatingPart = rotating;
+
     group.position.set(0, 2, -2);
     group.visible = false;
     scene.add(group);
@@ -649,17 +675,15 @@ function startExercise() {
     wheelModel.visible = true;
     if (cushion) cushion.visible = false;
     showReaction('wheel');
-    
-    // Save current pos
+
     const oldPos = opossum.position.clone();
     opossum.position.set(0, 1.1, -2);
-    
+
     setTimeout(() => {
         isExercising = false;
         wheelModel.visible = false;
         if (cushion) cushion.visible = true;
         opossum.position.copy(oldPos);
-        // Fatness is now reduced gradually in animate()
     }, 4000);
 }
 
@@ -675,10 +699,8 @@ function animate() {
     const delta = clock.getDelta();
     time += delta;
 
-    // Opossum idle breathing
     const dynamicBaseY = (currentScene === 'bathroom' ? 0.8 : 1.45) + (fatness - 1) * 0.4;
 
-    // Body only scaling
     const bScale = fatness;
     if (opossum.body) {
         opossum.body.scale.set(1.3 * bScale, 0.9 * bScale, 1.0 * bScale);
@@ -692,9 +714,7 @@ function animate() {
     }
 
     if (isExercising) {
-        // Burn calories! (Lose 0.15 fatness over 4 seconds)
         fatness = Math.max(1.0, fatness - (0.15 / 4) * delta);
-        
         wheelModel.rotatingPart.rotation.z += delta * 12;
         opossum.position.y = dynamicBaseY + Math.sin(time * 25) * 0.08;
         opossum.rotation.z = Math.sin(time * 20) * 0.15;
@@ -732,7 +752,6 @@ function animate() {
         item.progress += delta * item.speed;
         const t = Math.min(item.progress, 1);
 
-        // Parabolic arc
         const arcHeight = 2.5;
         const currentPos = new THREE.Vector3().lerpVectors(item.startPos, item.targetPos, t);
         currentPos.y += Math.sin(t * Math.PI) * arcHeight;
@@ -745,18 +764,42 @@ function animate() {
         if (t >= 1) {
             item.done = true;
             item.fadeOut = true;
-            // Trigger reaction
             opossumJumping = true;
             opossumJumpTime = 0;
             showReaction(item.type);
 
-            if (item.type === 'banana') {
-                fatness += 0.15;
+            if (item.type === 'banana') fatness += 0.15;
+
+            // 💩 음식 먹으면 똥 발사!
+            if (['banana', 'avocado', 'broccoli'].includes(item.type)) {
+                setTimeout(() => launchPoop(), item.type === 'banana' ? 600 : 900);
             }
 
             if (currentScene === 'bathroom') {
                 for (let j = 0; j < 10; j++) createBubble();
             }
+        }
+    }
+
+    // 💩 Update Poop Projectiles
+    for (let i = poopProjectiles.length - 1; i >= 0; i--) {
+        const p = poopProjectiles[i];
+        if (p.done) continue;
+
+        p.progress += delta * p.speed;
+        const t = Math.min(p.progress, 1);
+
+        const currentPos = new THREE.Vector3().lerpVectors(p.startPos, p.targetPos, t);
+        currentPos.y += Math.sin(t * Math.PI) * 1.8;
+        p.mesh.position.copy(currentPos);
+        p.mesh.rotation.z += p.spinSpeed * delta;
+        p.mesh.rotation.x += p.spinSpeed * 0.5 * delta;
+
+        if (t >= 1) {
+            p.done = true;
+            p.mesh.rotation.set(0, 0, 0);
+            poopPiles.push(p.mesh);
+            poopProjectiles.splice(i, 1);
         }
     }
 
@@ -779,11 +822,10 @@ function animate() {
 
     for (let i = waterParticles.length - 1; i >= 0; i--) {
         const p = waterParticles[i];
-        p.velocity.y -= 0.01; // gravity
+        p.velocity.y -= 0.01;
         p.mesh.position.add(p.velocity);
         p.life -= delta * 0.8;
         if (p.mesh.position.y < 0.8 && currentScene === 'bathroom') {
-            // Hit water/opossum area
             if (Math.random() > 0.8) createBubble();
             scene.remove(p.mesh);
             waterParticles.splice(i, 1);
@@ -806,7 +848,6 @@ function animate() {
         }
     }
 
-    // Gentle camera sway
     camera.position.x = Math.sin(time * 0.3) * 0.15;
     camera.lookAt(0, 1.2, 0);
 
@@ -825,7 +866,7 @@ setTimeout(() => {
     document.getElementById('loading-screen').classList.add('hidden');
 }, 800);
 
-// ===== Mouse Interaction for Washing & Petting =====
+// ===== Mouse Interaction =====
 const bloodParticles = [];
 function createBlood(pos) {
     for (let i = 0; i < 15; i++) {
@@ -842,6 +883,9 @@ function createBlood(pos) {
 }
 
 window.addEventListener('mousedown', (event) => {
+    // UI 버튼 클릭은 3D 인터랙션 무시
+    if (event.target.closest('#item-tray') || event.target.closest('#ui-overlay')) return;
+
     isDragging = true;
     handIcon.style.transform = 'translate(-50%, -50%) scale(0.8)';
 
@@ -853,11 +897,16 @@ window.addEventListener('mousedown', (event) => {
     if (intersects.length > 0) {
         const obj = intersects[0].object;
         if (obj.userData.type === 'head') {
-            // Bite!
             showReaction('bite');
             createBlood(new THREE.Vector3().setFromMatrixPosition(obj.matrixWorld));
         } else {
             showReaction('pet');
+        }
+    } else if (currentScene === 'room' && poopPiles.length > 0) {
+        // 💩 바닥 클릭 → 똥 한번에 청소
+        const floorHits = raycaster.intersectObject(roomFloor);
+        if (floorHits.length > 0) {
+            clearAllPoop();
         }
     }
 });
